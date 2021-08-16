@@ -1,14 +1,15 @@
+
 //jshint esversion:6
 require('dotenv').config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
-const session = require('express-session');
+const session = require("express-session");
 const passport = require("passport");
 const passportLocalMongoose = require("passport-local-mongoose");
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const findOrCreate = require('mongoose-findorcreate');
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const findOrCreate = require("mongoose-findorcreate");
 
 const app = express();
 
@@ -34,7 +35,8 @@ mongoose.set("useCreateIndex", true);
 const userSchema = new mongoose.Schema({
     email: String,
     password: String,
-    googleId: String
+    googleId: String,
+    secret: String
 });
 
 userSchema.plugin(passportLocalMongoose);
@@ -92,12 +94,47 @@ app.get("/register", function(req, res){
 });
 
 app.get("/secrets", function(req, res){
+   User.find({"secret": {$ne: null}}, function(err, foundUsers){
+       if (err) {
+           console.log(err);
+       } else {
+           if (foundUsers) {
+               res.render("secrets", {userWithSecrets: foundUsers});
+           }
+       }
+   });
+});
+
+
+app.get("/submit", function(req, res){
     if (req.isAuthenticated()){
-        res.render("secrets");
+        res.render("submit");
     } else {
         res.redirect("/login");
     }
 });
+
+app.post("/submit", function(req, res){
+    const submittedSecret = req.body.secret;
+
+    console.log(req.user.id);
+
+    User.findById(req.user.id, function(err, foundUser){
+        if(err) {
+            console.log(err);
+        } else {
+            if (foundUser) {
+                foundUser.secret = submittedSecret;
+                foundUser.save(function(){
+                    res.redirect("/secrets");
+                });
+            }
+        }
+    });
+
+
+});
+
 
 app.get("/logout", function(req, res){
     req.logout();
